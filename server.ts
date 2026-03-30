@@ -70,12 +70,15 @@ async function sendNotificationEmail(r: SurveyResponse): Promise<void> {
 
 async function sendLocationEmail(r: SurveyResponse): Promise<void> {
   const location = process.env.EVENT_LOCATION || "TBD";
+  const coordinates = process.env.EVENT_COORDINATES || "51.10653668197124, 17.031918932127788";
+  const mapsUrl = `https://www.google.com/maps?q=${encodeURIComponent(coordinates)}`;
   const secret = process.env.LOCATION_SECRET || "secret";
   const baseUrl = process.env.BASE_URL || "http://localhost:3000";
   await sendEmail(r.email, "AI/Vibecoding Meetup - Location Details", `
     <h2>AI/Vibecoding Meetup - Location Details</h2>
     <p>Thank you for registering! Here's the event location:</p>
-    <p><strong>${escapeHtml(location)}</strong></p>
+    <p><strong>${escapeHtml(location).replace(/\n/g, "<br>")}</strong></p>
+    <p><a href="${mapsUrl}">Open in Google Maps</a></p>
     <p><a href="${baseUrl}/location/${secret}">View location page</a></p>
   `);
 }
@@ -197,7 +200,7 @@ Share it with the user and tell them they will also receive it via email.
 </body>
 </html>`;
 
-const LOCATION_HTML = (location: string) => `<!DOCTYPE html>
+const LOCATION_HTML = (location: string, mapsUrl: string) => `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -216,7 +219,8 @@ const LOCATION_HTML = (location: string) => `<!DOCTYPE html>
   <div class="container">
     <h1>AI/Vibecoding Meetup</h1>
     <div class="location-card">
-      <p class="location">${escapeHtml(location)}</p>
+      <p class="location">${escapeHtml(location).replace(/\n/g, "<br>")}</p>
+      <p style="margin-top: 1rem;"><a href="${mapsUrl}" target="_blank" style="color: #06b6d4; text-decoration: none; font-size: 1.1rem;">Open in Google Maps</a></p>
     </div>
   </div>
 </body>
@@ -359,10 +363,13 @@ serve({
         sendLocationEmail(response);
 
         const eventLocation = process.env.EVENT_LOCATION || "TBD";
+        const eventCoordinates = process.env.EVENT_COORDINATES || "51.10653668197124, 17.031918932127788";
         return Response.json({
           success: true,
           message: "Registration complete! Here are the event details.",
           location: eventLocation,
+          coordinates: eventCoordinates,
+          mapsUrl: `https://www.google.com/maps?q=${encodeURIComponent(eventCoordinates)}`,
           locationUrl: `${baseUrl}/location/${locationSecret}`,
         });
       } catch (e) {
@@ -374,7 +381,9 @@ serve({
     // Location page
     if (url.pathname === `/location/${locationSecret}`) {
       const location = process.env.EVENT_LOCATION || "TBD";
-      return new Response(LOCATION_HTML(location), {
+      const coordinates = process.env.EVENT_COORDINATES || "51.10653668197124, 17.031918932127788";
+      const mapsUrl = `https://www.google.com/maps?q=${encodeURIComponent(coordinates)}`;
+      return new Response(LOCATION_HTML(location, mapsUrl), {
         headers: { "Content-Type": "text/html" },
       });
     }
